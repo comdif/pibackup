@@ -1,0 +1,116 @@
+#!/bin/bash
+## Christian-Zeler@2026 ##
+## COPY SYSTEM ##
+## This script is for UBUNTU.24 on RASPBERRY Writed with PI Imager with 1 boot partition and a 1 partition for data ##
+
+echo "###################### CHECK SYSTEM DISK ######################"
+PDSCK1=$(blkid|grep mmcblk0p1|awk -F":" '{print $1}')
+if [ ! -z "$PDSCK1" ]
+then
+echo "Raspberry first partition OK:  $PDSCK1"
+DSCK1=$(echo $PDSCK1|awk -F"/" '{print $3}')
+else
+echo "Raspberry first partition NOT DETECTED COPY IMPOSSIBLE"
+exit
+fi
+PDSCK2=$(blkid|grep mmcblk0p2|awk -F":" '{print $1}')
+if [ ! -z "$PDSCK2" ]
+then
+echo "Raspberry second partition OK:  $PDSCK2"
+DSCK2=$(echo $PDSCK2|awk -F"/" '{print $3}')
+else
+echo "Raspberry second partition NOT DETECTED COPY IMPOSSIBLE"
+exit
+fi
+
+echo "###################### CHECK TRAGET DISK ######################"
+SDADISK=$(blkid|grep sda)
+if [ ! -z "$SDADISK" ]
+then
+echo "SDA1 OK  $SDADISK"
+else
+echo "SDA DISK NOT DETECTED COPY IMPOSSIBLE"
+exit
+fi
+
+SDADISK2=$(blkid|grep sda1)
+if [ ! -z "$SDADISK2" ]
+then
+	echo "####################################### WARNING ######################################"
+	echo "SDA DISK HAVE EXISTING PARTITION: $SDADISK2"
+	echo "###################### THE SDA DISC WILL BE COMPLETELY ERASED ! ######################"
+		read -p "Are you sure you want to continue? <y/n> " prompt
+		if [[ $prompt == "y" || $prompt == "Y" || $prompt == "yes" || $prompt == "Yes" ]]
+		then
+		echo "OK PROCESSING"
+		else
+		exit 0
+		fi
+else
+	echo "TARGET DISK OK PROCESSING"
+fi
+
+echo "############## OK FORMATING SDA ANSWER y/Yes or Ignore/i to all questions ##############"
+
+dd bs=512 count=4096 if=/dev/zero of=/dev/sda
+wipefs --all --force /dev/sda
+wipefs --all /dev/sda
+parted -a optimal /dev/sda mklabel msdos
+parted -s /dev/sda mkpart primary fat32 1049kB 538MB
+parted -s /dev/sda set 1 boot on
+mkfs.vfat /dev/sda1
+dd if=/dev/mmcblk0p1 of=/dev/sda1
+parted -a optimal /dev/sda mkpart primary ext4 538MB 100%
+sleep 1
+mkfs.ext4 /dev/sda2
+e2label /dev/sda2 writable
+
+echo "############### FORCE UNMOUNT SDA BEFORE MOUNTING ON THE RIGHT PLACE ###############"
+
+umount /dev/sda1
+umount /dev/sda2
+
+echo "#################################### MOUNT SDA #####################################"
+
+mount /dev/sda2 /mnt
+rm -rf /mnt/*
+
+echo "################################ Control disk mount ###############################"
+
+echo "--------------------------------------"
+df -h|grep sda
+echo "--------------------------------------"
+rootdir=$(df -h|grep sda2|awk -F "% /" '{print $2}')
+if [ $rootdir = "mnt" ];
+then
+echo "OK sda2 is mounted on /$rootdir"
+else
+echo "SOMETHING IS WRONG sda2 is not mounted on /$rootdir !"
+exit
+fi
+
+echo "OK continue script"
+echo "################################## STOP SERVICES ##################################"
+
+#service Put_Your_Custom_Service_Here stop
+service mysql stop
+
+echo "################################### MAKE COPY ####################################"
+## MAKE SURE YOU DO NOT USE ANY OF THE FOLLOWING DIRECTORIES WITH A CUSTOM CONFIGURATION ##
+
+cd /
+rsync -aAXHv --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found","/var/chroot/proc/*","/var/chroot/tmp/*","/boot/firmware/*"} / /mnt
+
+echo "################################## START SERVICES #################################"
+
+#service Put_Your_Custom_Service_Here start
+service mysql start
+
+echo "############################## UPDATE NEW DISK FSTAB ##############################"
+echo "/dev/mmcblk0p2	/	ext4	defaults	0	1" > /mnt/etc/fstab
+echo "/dev/mmcblk0p1	/boot/firmware	vfat	defaults	0	1" >> /mnt/etc/fstab
+echo "/swapfile none swap sw 0 0" >> /mnt/etc/fstab
+
+echo "###################################### FINISH ####################################"
+echo " YOU CAN REBOOT ON YOUR NEW DISK ENJOY !"
+exit
