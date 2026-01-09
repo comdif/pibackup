@@ -10,10 +10,14 @@ The script I use for the complete cloning of my Raspberry Pi 4 - Ubuntu Server 2
 
 Simply place the script in the root directory of your system.
 
-Then, type: `chmod 755 clone`
+`cd /`
 
-Insert your USB drive with the new card
+`wget https://raw.githubusercontent.com/comdif/pibackup/refs/heads/main/clone`
 
-Enter `./clone`
+`chmod 755 clone`
+
+Insert your USB drive with the new card and enter:
+
+`./clone`
 
 Have a coffee and your card will be ready.
