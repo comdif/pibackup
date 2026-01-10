@@ -3,64 +3,68 @@
 ## COPY SYSTEM ##
 ## This script is for UBUNTU.24 on RASPBERRY Writed with PI Imager with 1 boot partition and a 1 partition for data ##
 
-echo "###################### CHECK SYSTEM DISK ######################"
-PDSCK1=$(blkid|grep mmcblk0p1|awk -F":" '{print $1}')
-if [ ! -z "$PDSCK1" ]
-then
-echo "Raspberry first partition OK:  $PDSCK1"
-DSCK1=$(echo $PDSCK1|awk -F"/" '{print $3}')
-else
-echo "Raspberry first partition NOT DETECTED COPY IMPOSSIBLE"
-exit
-fi
-PDSCK2=$(blkid|grep mmcblk0p2|awk -F":" '{print $1}')
-if [ ! -z "$PDSCK2" ]
-then
-echo "Raspberry second partition OK:  $PDSCK2"
-DSCK2=$(echo $PDSCK2|awk -F"/" '{print $3}')
-else
-echo "Raspberry second partition NOT DETECTED COPY IMPOSSIBLE"
-exit
-fi
 
-echo "###################### CHECK TRAGET DISK ######################"
+echo "###################### CHECK SYSTEM DISK ######################"
+
+PDSCK1=$(df -h|grep "firmware"|awk -F" " '{print $1}'|awk -F'[/]' '{print $3}')
+	if [ ! -z "$PDSCK1" ] && [ $PDSCK1 = "mmcblk0p1" ]
+	then
+		echo "Raspberry first partition OK:  $PDSCK1"
+	else
+		echo "Raspberry first partition NOT DETECTED must be mmcblk0p1 COPY IMPOSSIBLE"
+		exit
+	fi
+
+PDSCK2=$(df -h|grep -e" /$"|awk -F" " '{print $1}'|awk -F'[/]' '{print $3}')
+	if [ ! -z "$PDSCK2" ] && [ $PDSCK2 = "mmcblk0p2" ]
+	then
+		echo "Raspberry second partition OK:  $PDSCK2"
+	else
+		echo "Raspberry second partition NOT DETECTED must be mmcblk0p2 COPY IMPOSSIBLE"
+		exit
+	fi
+
+echo "###################### CHECK TARGET DISK ######################"
+
 SDADISK=$(blkid|grep sda)
-if [ ! -z "$SDADISK" ]
-then
-echo "SDA1 OK  $SDADISK"
-else
-echo "SDA DISK NOT DETECTED COPY IMPOSSIBLE"
-exit
-fi
+	if [ ! -z "$SDADISK" ]
+	then
+		echo "SDA1 OK  $SDADISK"
+	else
+		echo "SDA DISK NOT DETECTED COPY IMPOSSIBLE"
+		exit
+	fi
 
 SDADISK2=$(blkid|grep sda1)
-if [ ! -z "$SDADISK2" ]
-then
-	echo "####################################### WARNING ######################################"
-	echo "SDA DISK HAVE EXISTING PARTITION: $SDADISK2"
-	echo "###################### THE SDA DISC WILL BE COMPLETELY ERASED ! ######################"
+	if [ ! -z "$SDADISK2" ]
+	then
+		echo "####################################### WARNING ######################################"
+		echo "SDA DISK HAVE EXISTING PARTITION: $SDADISK2"
+		echo "###################### THE SDA DISC WILL BE COMPLETELY ERASED ! ######################"
 		read -p "Are you sure you want to continue? <y/n> " prompt
-		if [[ $prompt == "y" || $prompt == "Y" || $prompt == "yes" || $prompt == "Yes" ]]
-		then
-		echo "OK PROCESSING"
-		else
-		exit 0
-		fi
-else
-	echo "TARGET DISK OK PROCESSING"
-fi
+			if [[ $prompt == "y" || $prompt == "Y" || $prompt == "yes" || $prompt == "Yes" ]]
+			then
+				echo "OK PROCESSING"
+			else
+				exit 0
+			fi
+	else
+		echo "TARGET DISK OK PROCESSING"
+	fi
 
-echo "############## OK FORMATING SDA ANSWER y/Yes or Ignore/i to all questions ##############"
+echo "######################### OK FORMATING SDA ANSWER y/Yes or Ignore/i to all questions #########################"
 
+########################### GET PARTITION START AND END
+start=$(parted /dev/mmcblk0 print|grep "boot"|awk -F" " '{print $2}')
+end=$(parted /dev/mmcblk0 print|grep "boot"|awk -F" " '{print $3}')
 dd bs=512 count=4096 if=/dev/zero of=/dev/sda
 wipefs --all --force /dev/sda
-wipefs --all /dev/sda
 parted -a optimal /dev/sda mklabel msdos
-parted -s /dev/sda mkpart primary fat32 1049kB 538MB
+parted -s /dev/sda mkpart primary fat32 $start $end
 parted -s /dev/sda set 1 boot on
 mkfs.vfat /dev/sda1
 dd if=/dev/mmcblk0p1 of=/dev/sda1
-parted -a optimal /dev/sda mkpart primary ext4 538MB 100%
+parted -a optimal /dev/sda mkpart primary ext4 $end 100%
 sleep 1
 mkfs.ext4 /dev/sda2
 e2label /dev/sda2 writable
