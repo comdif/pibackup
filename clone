@@ -1,15 +1,17 @@
 #!/bin/bash
 ## Christian-Zeler@2026 ##
 ## COPY SYSTEM ##
-## This script is for UBUNTU.24 on RASPBERRY Writed with PI Imager with 1 boot partition and a 1 partition for data ##
-
-
+echo "## This script is tested on UBUNTU.24 but should work on any other Debian based distro writed with PI imager ##"
+echo "## Typically designed for a standard installation on a SD card ##"
+echo "## Connect a USB/SD card adapter containing the target SD card to your Raspberry Pi and run the script ##"
+echo "## Does not work if you are using an M.2 disk or USB flash drive to run your system ##"
+echo ""
 echo "###################### CHECK SYSTEM DISK ######################"
-
+echo ""
 PDSCK1=$(df -h|grep "firmware"|awk -F" " '{print $1}'|awk -F'[/]' '{print $3}')
 	if [ ! -z "$PDSCK1" ] && [ $PDSCK1 = "mmcblk0p1" ]
 	then
-		echo "Raspberry first partition OK:  $PDSCK1"
+		echo "Raspberry first partition OK"
 	else
 		echo "Raspberry first partition NOT DETECTED must be mmcblk0p1 COPY IMPOSSIBLE"
 		exit
@@ -18,14 +20,14 @@ PDSCK1=$(df -h|grep "firmware"|awk -F" " '{print $1}'|awk -F'[/]' '{print $3}')
 PDSCK2=$(df -h|grep -e" /$"|awk -F" " '{print $1}'|awk -F'[/]' '{print $3}')
 	if [ ! -z "$PDSCK2" ] && [ $PDSCK2 = "mmcblk0p2" ]
 	then
-		echo "Raspberry second partition OK:  $PDSCK2"
+		echo "Raspberry second partition OK"
 	else
 		echo "Raspberry second partition NOT DETECTED must be mmcblk0p2 COPY IMPOSSIBLE"
 		exit
 	fi
-
+echo ""
 echo "###################### CHECK TARGET DISK ######################"
-
+echo ""
 SDADISK=$(blkid|grep sda)
 	if [ ! -z "$SDADISK" ]
 	then
@@ -51,14 +53,16 @@ SDADISK2=$(blkid|grep sda1)
 	else
 		echo "TARGET DISK OK PROCESSING"
 	fi
-
+echo ""
 echo "######################### OK FORMATING SDA ANSWER y/Yes or Ignore/i to all questions #########################"
-
-########################### GET PARTITION START AND END
+echo ""
+echo "########################### GET PARTITION START AND END"
 start=$(parted /dev/mmcblk0 print|grep "boot"|awk -F" " '{print $2}')
 end=$(parted /dev/mmcblk0 print|grep "boot"|awk -F" " '{print $3}')
+echo "########################### ERASE TARGET DISK"
 dd bs=512 count=4096 if=/dev/zero of=/dev/sda
 wipefs --all --force /dev/sda
+echo "########################### FORMAT DISK"
 parted -a optimal /dev/sda mklabel msdos
 parted -s /dev/sda mkpart primary fat32 $start $end
 parted -s /dev/sda set 1 boot on
@@ -68,22 +72,19 @@ parted -a optimal /dev/sda mkpart primary ext4 $end 100%
 sleep 1
 mkfs.ext4 /dev/sda2
 e2label /dev/sda2 writable
-
+echo ""
 echo "############### FORCE UNMOUNT SDA BEFORE MOUNTING ON THE RIGHT PLACE ###############"
-
+echo ""
 umount /dev/sda1
 umount /dev/sda2
-
+echo ""
 echo "#################################### MOUNT SDA #####################################"
-
+echo ""
 mount /dev/sda2 /mnt
 rm -rf /mnt/*
-
+echo ""
 echo "################################ Control disk mount ###############################"
-
-echo "--------------------------------------"
-df -h|grep sda
-echo "--------------------------------------"
+echo ""
 rootdir=$(df -h|grep sda2|awk -F "% /" '{print $2}')
 if [ $rootdir = "mnt" ];
 then
@@ -92,29 +93,30 @@ else
 echo "SOMETHING IS WRONG sda2 is not mounted on /$rootdir !"
 exit
 fi
-
-echo "OK continue script"
+echo ""
 echo "################################## STOP SERVICES ##################################"
-
+echo ""
 #service Put_Your_Custom_Service_Here stop
 service mysql stop
-
+echo ""
 echo "################################### MAKE COPY ####################################"
+echo ""
 ## MAKE SURE YOU DO NOT USE ANY OF THE FOLLOWING DIRECTORIES WITH A CUSTOM CONFIGURATION ##
-
 cd /
 rsync -aAXHv --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found","/var/chroot/proc/*","/var/chroot/tmp/*","/boot/firmware/*"} / /mnt
-
+echo ""
 echo "################################## START SERVICES #################################"
-
+echo ""
 #service Put_Your_Custom_Service_Here start
 service mysql start
-
+echo ""
 echo "############################## UPDATE NEW DISK FSTAB ##############################"
+echo ""
 echo "/dev/mmcblk0p2	/	ext4	defaults	0	1" > /mnt/etc/fstab
 echo "/dev/mmcblk0p1	/boot/firmware	vfat	defaults	0	1" >> /mnt/etc/fstab
 echo "/swapfile none swap sw 0 0" >> /mnt/etc/fstab
-
+echo ""
 echo "###################################### FINISH ####################################"
+echo ""
 echo " YOU CAN REBOOT ON YOUR NEW DISK ENJOY !"
 exit
