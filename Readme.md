@@ -1,5 +1,9 @@
 The script I use for the complete cloning of my Raspberry Pi 4 - Ubuntu Server 24.04.3 LTS installed with PI Imager
 
+This should work for any other Debian-based distribution installed with PI Imager like Raspbian, just make sure you have parted installed.
+
+`apt install parted`
+
 > You need a USB SD card reader and an SD card of sufficient size for your system.
 >
 > The SD card can be smaller or larger, it doesn't matter.
