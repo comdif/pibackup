@@ -110,12 +110,6 @@ echo ""
 #service Put_Your_Custom_Service_Here start
 service mysql start
 echo ""
-echo "############################## UPDATE NEW DISK FSTAB ##############################"
-echo ""
-echo "/dev/mmcblk0p2	/	ext4	defaults	0	1" > /mnt/etc/fstab
-echo "/dev/mmcblk0p1	/boot/firmware	vfat	defaults	0	1" >> /mnt/etc/fstab
-echo "/swapfile none swap sw 0 0" >> /mnt/etc/fstab
-echo ""
 echo "###################################### FINISH ####################################"
 echo ""
 echo " YOU CAN REBOOT ON YOUR NEW DISK ENJOY !"
